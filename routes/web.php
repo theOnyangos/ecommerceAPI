@@ -25,6 +25,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/register', 'AuthController@register');
     $router->get('/products', 'PostController@get_products');
     $router->get('/products/{id}', 'PostController@getSingleProduct');
+    $router->post('/products', 'PostController@createNewProduct');
     // $router->get('/images', 'PostController@getSingleProduct');
 
     // Authenticate routs

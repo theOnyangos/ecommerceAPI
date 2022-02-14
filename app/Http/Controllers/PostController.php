@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Intervention\Image\Facades\Image;
 
 class PostController extends Controller
 {
@@ -204,7 +205,7 @@ class PostController extends Controller
             }
             //code...
         } catch (\Exception $ex) {
-            return response()->json(['ststue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+            return response()->json(['status_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
     }
 
@@ -213,12 +214,39 @@ class PostController extends Controller
     * @param AUTHOR: Dennis Oteino
     * @param DESCRIPTION: This function create a new product with data comming from the form.
     */
-    public function createNewProduct()
+    public function createNewProduct(Request $request)
     {
         try {
-            //code...
+            //Get incoming data from the inputs
+            $inputData = array();
+            $inputData['product_title'] = $request->product_title;
+            $inputData['product_brand'] = $request->product_brand;
+            $inputData['product_qty'] = $request->product_qty;
+            $inputData['product_thubnail'] = $request->product_thumbnail;
+            $inputData['product_description'] = $request->product_description;
+
+            // Validate products fields (required)
+            if (empty($inputData['product_title'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'messages' => 'Please provide a product title to continue']);
+            }
+
+            if (empty($inputData['product_brand']) || ctype_digit($inputData['product_brand'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Product brand is required and must not contain numbers.']);
+            }
+
+            if (empty($inputData['product_qty']) || !ctype_digit($inputData['product_qty'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Set a quantity for the product only numbers allowed.']);
+            }
+
+            // Save product into the database
+            $product_id = DB::table('ptz_products')->insertGetId($inputData);
+
+            // Upload product multiple images
+            $images = $request->file('multi_image');
+            $imageUploadPath = 'upload/products/multiImages/';
+            $this->uploadmultipleImages($images, $imageUploadPath, $product_id);
         } catch (\Exception $ex) {
-            return response()->json(['ststue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+            return response()->json(['status_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
     }
 
@@ -227,11 +255,19 @@ class PostController extends Controller
     * @param AUTHOR: Dennis Otieno
     * @param DESCRIPTION: This function runs multiple image upload
     */
-    public function uploadmultipleImages()
+    public function uploadmultipleImages($images, $imageUploadPath, $product_id)
     {
         //
         try {
-            //code...
+            //Loop through the image array while saving in the database.
+            foreach ($images as $img) {
+                $make_name = hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
+                Image::make($img)->resize(720, 960)->save($imageUploadPath.$make_name);
+                DB::table('ptz_multipleimages')->insert([
+                'product_id' => $product_id,
+                'photo_name' => $imageUploadPath
+            ]);
+            }
         } catch (\Exception $ex) {
             return response()->json(['ststue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
