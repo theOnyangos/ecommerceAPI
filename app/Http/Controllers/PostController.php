@@ -238,13 +238,106 @@ class PostController extends Controller
                 return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Set a quantity for the product only numbers allowed.']);
             }
 
-            // Save product into the database
+            if (empty($inputData['product_thumbnail'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product thumbnail image.']);
+            }
+
+            if (empty($inputData['product_description'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product description.']);
+            }
+
+            // Upload product thumbnail.
+            $image = $request->file('product_thumbnail');
+            $name_gen = hexdec(uniqid()).'.'.$image->getClientOriginalExtension();
+            Image::make($image)->resize(720, 960)->save('images/product_thumbnails/'.$name_gen);
+            $imageUrlPath = 'images/product_thumbnails/'.$name_gen;
+            $inputData['product_thumbnail'] = $imageUrlPath;
+
+            // Save product into the database and return the id
             $product_id = DB::table('ptz_products')->insertGetId($inputData);
 
             // Upload product multiple images
             $images = $request->file('multi_image');
-            $imageUploadPath = 'upload/products/multiImages/';
+            $imageUploadPath = 'images/products_multiImages/';
             $this->uploadmultipleImages($images, $imageUploadPath, $product_id);
+
+            // Get the inserted product
+            $product = DB::table('ptz_products')->where(['id' => $product_id])->get();
+
+            // Check if the product is found.
+            if (!$product) {
+                return response()->json(['status_code' => '404', 'status' => 'error', 'message' => 'Product NOT found!']);
+            } else {
+                // Get product color
+                if ($product->product_color === '') {
+                    $productColorArray = [];
+                } else {
+                    $productColorArray = $this->filterColor($product->product_color);
+                }
+
+                // Get size array
+                if ($product->product_size === '') {
+                    $productSizeArray = [];
+                } else {
+                    $productSizeArray = $this->filterSize($product->product_size);
+                }
+
+                // Get product material
+                if ($product->product_material === '') {
+                    $productMaterialArray = [];
+                } else {
+                    $productMaterialArray = $this->filterMaterial($product->product_material);
+                }
+
+                // Get product images
+                $productImagesArray = $this->getProductImages($product->id);
+
+                // New product object
+                $productArray = array();
+                $productArray['id'] = $product->id;
+                $productArray['product_id'] = $product->product_id;
+                $productArray['vendor_id'] = $product->vendor_id;
+                $productArray['product_title'] = $product->product_title;
+                $productArray['shop_name'] = $product->shop_name;
+                $productArray['slug'] = $product->slug;
+                $productArray['brand_id'] = $product->brand_id;
+                $productArray['category_id'] = $product->category_id;
+                $productArray['subcategory_id'] = $product->subcategory_id;
+                $productArray['sub_subcategory_id'] = $product->sub_subcategory_id;
+                $productArray['product_tags'] = $product->product_tags;
+                $productArray['product_sku'] = $product->product_sku;
+                $productArray['product_qty'] = $product->product_qty;
+                $productArray['cost_price'] = $product->cost_price;
+                $productArray['selling_price'] = $product->selling_price;
+                $productArray['discount_price'] = $product->discount_price;
+                $productArray['percentage'] = $product->percentage;
+                $productArray['product_size'] = $productSizeArray;
+                $productArray['product_color'] = $productColorArray;
+                $productArray['product_material'] = $productMaterialArray;
+                $productArray['product_thumbnail'] = 'https://sellercenter.patazone.co.ke/'.$product->product_thumbnail;
+                $productArray['images'] = $productImagesArray;
+                $productArray['unit_size'] = $product->unit_size;
+                $productArray['hot_deals'] = $product->hot_deals;
+                $productArray['featured'] = $product->featured;
+                $productArray['is_recomended'] = $product->is_recomended;
+                $productArray['special_offer'] = $product->special_offer;
+                $productArray['special_deals'] = $product->special_deals;
+                $productArray['value_of_the_day'] = $product->value_of_the_day;
+                $productArray['weekly_offers'] = $product->weekly_offers;
+                $productArray['new_arrivals'] = $product->new_arrivals;
+                $productArray['is_varified'] = $product->is_varified;
+                $productArray['is_lipalater'] = $product->is_lipalater;
+                $productArray['short_description'] = $product->short_description;
+                $productArray['product_specification'] = $product->product_specification;
+                $productArray['long_description'] = $product->long_description;
+                $productArray['created_date'] = $product->created_date;
+                $productArray['updated_date'] = $product->updated_date;
+
+                // Return success response for product creation.
+                return response()->json(['status_code' => '200', 'status' => 'success', 'massage' => ['Product created successfully.'], 'data' => $productArray]);
+            }
+
+            // Catch internal errors
         } catch (\Exception $ex) {
             return response()->json(['status_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
@@ -263,9 +356,9 @@ class PostController extends Controller
             foreach ($images as $img) {
                 $make_name = hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
                 Image::make($img)->resize(720, 960)->save($imageUploadPath.$make_name);
-                DB::table('ptz_multipleimages')->insert([
+                DB::table('ptz_multipleimgs')->insert([
                 'product_id' => $product_id,
-                'photo_name' => $imageUploadPath
+                'img_url' => $imageUploadPath
             ]);
             }
         } catch (\Exception $ex) {
