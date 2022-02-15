@@ -485,7 +485,165 @@ class PostController extends Controller
     public function updateProductDetails(Request $request, $id)
     {
         try {
-            //code...
+            // Create a product slug
+            $slug = strtolower(str_replace(' ', '-', $request->product_title));
+
+            //Get incoming data from the inputs for edit
+            $inputData = array();
+            $inputData['product_title'] = $request->product_title;
+            $inputData['slug'] = $slug;
+            $inputData['brand_id'] = $request->brand_id;
+            $inputData['category_id'] = $request->category_id;
+            $inputData['subcategory_id'] = $request->subcategory_id;
+            $inputData['sub_subcategory_id'] = $request->sub_subcategory_id;
+            $inputData['product_tags'] = $request->product_tags;
+            $inputData['product_qty'] = $request->product_qty;
+            $inputData['cost_price'] = $request->cost_price;
+            $inputData['selling_price'] = $request->selling_price;
+            $inputData['discount_price'] = $request->cost_price;
+            $inputData['percentage'] = $request->percentage;
+            $inputData['product_size'] = $request->product_size;
+            $inputData['product_color'] = $request->product_color;
+            $inputData['product_material'] = $request->product_material;
+            $inputData['product_thumbnail'] = $request->product_thumbnail;
+            $inputData['unit_size'] = $request->unit_size;
+            $inputData['hot_deals'] = $request->hot_deals;
+            $inputData['featured'] = $request->featured;
+            $inputData['is_recomended'] = $request->is_recomended;
+            $inputData['special_offer'] = $request->special_offer;
+            $inputData['special_deals'] = $request->special_deals;
+            $inputData['value_of_the_day'] = $request->value_of_the_day;
+            $inputData['weekly_offers'] = $request->weekly_offers;
+            $inputData['new_arrivals'] = $request->new_arrivals;
+            $inputData['short_description'] = $request->short_description;
+            $inputData['product_specification'] = $request->product_specification;
+            $inputData['long_description'] = $request->long_description;
+
+            // Validate products fields (required)
+            if (empty($inputData['product_title'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'messages' => 'Please provide a product title to continue']);
+            }
+
+            if (empty($inputData['brand_id']) || !ctype_digit($inputData['brand_id'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Product brand is required and must not contain numbers.']);
+            }
+
+            if (empty($inputData['product_qty']) || !ctype_digit($inputData['product_qty'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Set a quantity for the product only numbers allowed.']);
+            }
+
+            if (empty($inputData['product_thumbnail'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product thumbnail image.']);
+            }
+
+            if (empty($inputData['long_description'])) {
+                return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product description.']);
+            }
+
+
+            if ($image = $request->file('product_thumbnail')) {
+                // Get the old image
+                $product = DB::table('ptz_products')->where(['id' => $id])->first();
+                $currentlySavedImage = $product->product_thumbnail;
+
+                // Unlink the current image
+                unlink($currentlySavedImage);
+
+                // Update product thumbnail Image
+                $name_gen = 'patazone-product-image-'.hexdec(uniqid()).'.'.$image->getClientOriginalExtension();
+                Image::make($image)->resize(500, 500)->save('images/product_thumbnails/'.$name_gen);
+                $imageUrlPath = 'images/product_thumbnails/'.$name_gen;
+                $inputData['product_thumbnail'] = $imageUrlPath;
+            }
+
+            // Update product details in the database.
+            DB::table('ptz_products')->update($inputData);
+
+            // Upload product multiple images
+            $this->uploadmultipleImages($request->file('multi_image'), $id);
+
+            // Get the inserted product
+            $product = DB::table('ptz_products')->where(['id' => $id])->first();
+
+            // Check if the product is found.
+            if (!$product) {
+                return response()->json(['status_code' => '404', 'status' => 'error', 'message' => 'Product NOT found!']);
+            } else {
+                // Get product color
+                if ($product->product_color === '') {
+                    $productColorArray = [];
+                } else {
+                    $productColorArray = $this->filterColor($product->product_color);
+                }
+
+                // Get size array
+                if ($product->product_size === '') {
+                    $productSizeArray = [];
+                } else {
+                    $productSizeArray = $this->filterSize($product->product_size);
+                }
+
+                // Get product material
+                if ($product->product_material === '') {
+                    $productMaterialArray = [];
+                } else {
+                    $productMaterialArray = $this->filterMaterial($product->product_material);
+                }
+
+                // Get product Tags
+                if ($product->product_tags === '') {
+                    $productTagsArray = [];
+                } else {
+                    $productTagsArray = $this->filterTags($product->product_tags);
+                }
+
+                // Get product images
+                $productImagesArray = $this->getProductImages($product->id);
+
+                // New product object
+                $productArray = array();
+                $productArray['id'] = $product->id;
+                $productArray['product_id'] = $product->product_id;
+                $productArray['vendor_id'] = $product->vendor_id;
+                $productArray['product_title'] = $product->product_title;
+                $productArray['shop_name'] = $product->shop_name;
+                $productArray['slug'] = $product->slug;
+                $productArray['brand_id'] = $product->brand_id;
+                $productArray['category_id'] = $product->category_id;
+                $productArray['subcategory_id'] = $product->subcategory_id;
+                $productArray['sub_subcategory_id'] = $product->sub_subcategory_id;
+                $productArray['product_tags'] = $productTagsArray;
+                $productArray['product_sku'] = $product->product_sku;
+                $productArray['product_qty'] = $product->product_qty;
+                $productArray['cost_price'] = $product->cost_price;
+                $productArray['selling_price'] = $product->selling_price;
+                $productArray['discount_price'] = $product->discount_price;
+                $productArray['percentage'] = $product->percentage;
+                $productArray['product_size'] = $productSizeArray;
+                $productArray['product_color'] = $productColorArray;
+                $productArray['product_material'] = $productMaterialArray;
+                $productArray['product_thumbnail'] = 'https://sellercenter.patazone.co.ke/'.$product->product_thumbnail;
+                $productArray['images'] = $productImagesArray;
+                $productArray['unit_size'] = $product->unit_size;
+                $productArray['hot_deals'] = $product->hot_deals;
+                $productArray['featured'] = $product->featured;
+                $productArray['is_recomended'] = $product->is_recomended;
+                $productArray['special_offer'] = $product->special_offer;
+                $productArray['special_deals'] = $product->special_deals;
+                $productArray['value_of_the_day'] = $product->value_of_the_day;
+                $productArray['weekly_offers'] = $product->weekly_offers;
+                $productArray['new_arrivals'] = $product->new_arrivals;
+                $productArray['is_varified'] = $product->is_varified;
+                $productArray['is_lipalater'] = $product->is_lipalater;
+                $productArray['short_description'] = $product->short_description;
+                $productArray['product_specification'] = $product->product_specification;
+                $productArray['long_description'] = $product->long_description;
+                $productArray['created_date'] = $product->created_date;
+                $productArray['updated_date'] = $product->updated_date;
+
+                // Return success response for product creation.
+                return response()->json(['status_code' => '201', 'status' => 'success', 'massage' => ['Product updated successfully.'], 'data' => $productArray]);
+            }
         } catch (\Exception $ex) {
             return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
@@ -502,6 +660,42 @@ class PostController extends Controller
         $colorArray = explode(',', $colorString);
         return $colorArray;
     }
+
+    /**
+    * @param DATE-CREATED: 15/2/2022
+    * @param AUTHOR: Dennis otieno
+    * @param DESCRIPTION: This function deletes a single product image or multiple prooduct images
+    */
+    public function deleteInMultipleImages($id, $imgid=false)
+    {
+        try {
+            if ($imgid) {
+                // Get the image from the saved location and unlink
+                $product = DB::table('ptz_multipleimgs')->where(['id' => $imgid, 'product_id' => $id])->first();
+                unlink($product->img_url);
+
+                // Delete product in the databse.
+                DB::table('ptz_multipleimgs')->where(['id' => $imgid, 'product_id' => $id])->delete();
+                return response()->json(['status_code' => '200', 'status' => 'success', 'message' => 'Image ID '.$imgid.' deleted successfully.']);
+            } else {
+                // Get all the images with the specifiied product ID
+                $productImgs = DB::table('ptz_multipleimgs')->where(['product_id' => $id])->get();
+                foreach ($productImgs as $img) {
+                    unlink($img->img_url);
+                }
+
+                // Delete the images links from the database.
+                DB::table('ptz_multipleimgs')->where(['product_id' => $id])->delete();
+                return response()->json(['status_code' => '200', 'status' => 'success', 'message' => 'Images with IDs '.$id.' deleted successfully.']);
+            }
+        } catch (\Exception $ex) {
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+        }
+    }
+
+    /** ============================================================================
+     *    PRODDUCT SECTIONS UPDATE ENDPOINTS
+     * =============================================================================*/
 
     /**
     * @param DATE-CREATED: 15/2/2022
