@@ -27,6 +27,9 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('/products/{id}', 'PostController@getSingleProduct'); // Get a single product
     $router->post('/products', 'PostController@createNewProduct'); // Create product on main admin system
     $router->post('/products/{id}', 'PostController@createNewProduct'); //Create product on vendor portal
+    $router->delete('/products/{id}', 'PostController@deleteProduct'); // Delete a single product
+    $router->delete('/products/{id}/{softid}', 'PostController@deleteProduct'); // Soft delete a single product
+    $router->patch('/products/{id}', 'PostController@updateProductDetails'); // Update a product
 
     // Authenticate routs
     $router->group(['middleware' => 'auth'], function () use ($router) {

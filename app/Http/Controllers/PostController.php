@@ -186,12 +186,13 @@ class PostController extends Controller
                     $productArray['long_description'] = $product->long_description;
                     $productArray['created_date'] = $product->created_date;
                     $productArray['updated_date'] = $product->updated_date;
+                    $productArray['soft_delete'] = $product->soft_delete;
 
                     // Send back response to client
                     return response()->json(['status_code' => '200', 'status' => 'success', 'returned_items' => $rowCount, 'message' => array(), 'data' => $productArray]);
                 } else {
                     // Product not found for given id
-                    return response()->json(['status_code' => '400', 'status' => 'error', 'message' => array('Product not found in records')]);
+                    return response()->json(['status_code' => '404', 'status' => 'error', 'message' => array('Product not found in records')]);
                 }
             } elseif (!is_numeric($id)) {
                 return response()->json(['status_code' => '400', 'status' => 'error', 'message' => array('Product ID must contain only numeric charactors.')]);
@@ -437,9 +438,40 @@ class PostController extends Controller
     * @param AUTHOR: Dennis otieno
     * @param DESCRIPTION: This function is for deleting a product; soft delete should be an intager 1 by default is null.
     */
-    public function deleteProduct(Request $request, int $id, int $softDelete = null)
+    public function deleteProduct($id, $softid=false)
     {
-        //
+        try {
+            // Check if a softdelete key is passed the perform the task else delete the entire product
+            if ($softid) {
+                if (is_numeric($softid) && $softid === '1') {
+                    $datavalue = array();
+                    $datavalue['soft_delete'] = $softid;
+                    DB::table('ptz_products')->where(['id' => $id])->update($datavalue);
+                    return response()->json(['status_code' => '200', 'status' => 'success', 'message' => 'Product soft deleted successfully']);
+                } else {
+                    return response()->json(['status_code' => '400', 'status' => 'error', 'message' => 'Soft delete value should be a numeric charactor and should be equal to 1']);
+                }
+            } else {
+                // Delete product in products
+                DB::table('ptz_products')->where(['id' => $id])->delete();
+
+                // Delete product images (Multiple Images)
+                $this->deleteMultipleImages($id);
+                $message = 'Product with ID '.$id.' is permanently deleted from the records';
+                return response()->json(['status_code' => '200', 'status' => 'success', 'message' => $message]);
+            }
+        } catch (\Exception $ex) {
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+        }
+    }
+
+    /**
+    * @param DATE-CREATED: 15/2/2022
+    * @param AUTHOR: Dennis otieno
+    * @param DESCRIPTION: This function updates product details including images
+    */
+    public function updateProductDetails(Request $request, $id)
+    {
         try {
             //code...
         } catch (\Exception $ex) {
@@ -457,6 +489,26 @@ class PostController extends Controller
         // Get color array
         $colorArray = explode(',', $colorString);
         return $colorArray;
+    }
+
+    /**
+    * @param DATE-CREATED: 15/2/2022
+    * @param AUTHOR: Dennis otieno
+    * @param DESCRIPTION: This function is for deleting single product multiple images
+    */
+    public function deleteMultipleImages($productId)
+    {
+        try {
+            // Find the images and unlink them
+            $oldImages = DB::table('ptz_multipleimgs')->where(['product_id' => $productId])->get();
+            unlink($oldImages->img_url);
+
+            // Delete the image links from the database
+            DB::table('ptz_multipleimgs')->where(['product_id' => $productId])->delete();
+            return true;
+        } catch (\Exception $ex) {
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+        }
     }
 
     /**
