@@ -43,6 +43,13 @@ class PostController extends Controller
                 $productMaterialArray = $this->filterMaterial($product->product_material);
             }
 
+            // Get product Tags
+            if ($product->product_tags === '') {
+                $productTagsArray = [];
+            } else {
+                $productTagsArray = $this->filterTags($product->product_tags);
+            }
+
             $imagesArray = $this->getProductImages($product->id);
 
             $newProductArray[] = array(
@@ -56,7 +63,7 @@ class PostController extends Controller
                 'category_id' => $product->category_id,
                 'subcategory_id' => $product->subcategory_id,
                 'sub_subcategory_id' => $product->sub_subcategory_id,
-                'product_tags' => $product->product_tags,
+                'product_tags' => $productTagsArray,
                 'product_sku' => $product->product_sku,
                 'product_qty' => $product->product_qty,
                 'cost_price' => $product->cost_price,
@@ -129,6 +136,13 @@ class PostController extends Controller
                         $productMaterialArray = $this->filterMaterial($product->product_material);
                     }
 
+                    // Get product Tags
+                    if ($product->product_tags === '') {
+                        $productTagsArray = [];
+                    } else {
+                        $productTagsArray = $this->filterTags($product->product_tags);
+                    }
+
                     // Get product images
                     $productImagesArray = $this->getProductImages($product->id);
 
@@ -144,7 +158,7 @@ class PostController extends Controller
                     $productArray['category_id'] = $product->category_id;
                     $productArray['subcategory_id'] = $product->subcategory_id;
                     $productArray['sub_subcategory_id'] = $product->sub_subcategory_id;
-                    $productArray['product_tags'] = $product->product_tags;
+                    $productArray['product_tags'] = $productTagsArray;
                     $productArray['product_sku'] = $product->product_sku;
                     $productArray['product_qty'] = $product->product_qty;
                     $productArray['cost_price'] = $product->cost_price;
@@ -210,27 +224,73 @@ class PostController extends Controller
     }
 
     /**
-    * @param DATE-CREATED: 12/2/2022
+    * @param DATE-CREATED: 14/2/2022
     * @param AUTHOR: Dennis Oteino
-    * @param DESCRIPTION: This function create a new product with data comming from the form.
+    * @param DESCRIPTION: This function create a new product for both vendors and system owner.
     */
-    public function createNewProduct(Request $request)
+    public function createNewProduct(Request $request, $id=false)
     {
         try {
+            // Generate product unique ID
+            $productId = '_id-'.uniqid(rand(10000, 99999));
+
+            // Generate product stock keeping unit(SKU)
+            $productSKU = rand(10000, 99999);
+
+            // Get shop name
+            if ($id) {
+                $vendor = DB::table('ptz_account_users')->where(['id' => $id])->first();
+                $shopName = $vendor->store_name;
+                $vendorID = $vendor->vendor_id;
+            } else {
+                $shopName = 'Official Store';
+                $vendorID = 'OFVID001';
+            }
+
+            // Create a product slug
+            $slug = strtolower(str_replace(' ', '-', $request->product_title));
+
             //Get incoming data from the inputs
             $inputData = array();
+            $inputData['product_id'] = $productId;
+            $inputData['vendor_id'] = $vendorID;
             $inputData['product_title'] = $request->product_title;
-            $inputData['product_brand'] = $request->product_brand;
+            $inputData['shop_name'] = $shopName;
+            $inputData['slug'] = $slug;
+            $inputData['brand_id'] = $request->brand_id;
+            $inputData['category_id'] = $request->category_id;
+            $inputData['subcategory_id'] = $request->subcategory_id;
+            $inputData['sub_subcategory_id'] = $request->sub_subcategory_id;
+            $inputData['product_tags'] = $request->product_tags;
+            $inputData['product_sku'] = $productSKU;
             $inputData['product_qty'] = $request->product_qty;
-            $inputData['product_thubnail'] = $request->product_thumbnail;
-            $inputData['product_description'] = $request->product_description;
+            $inputData['cost_price'] = $request->cost_price;
+            $inputData['selling_price'] = $request->selling_price;
+            $inputData['discount_price'] = $request->cost_price;
+            $inputData['percentage'] = $request->percentage;
+            $inputData['product_size'] = $request->product_size;
+            $inputData['product_color'] = $request->product_color;
+            $inputData['product_material'] = $request->product_material;
+            $inputData['product_thumbnail'] = $request->product_thumbnail;
+            $inputData['unit_size'] = $request->unit_size;
+            $inputData['hot_deals'] = $request->hot_deals;
+            $inputData['featured'] = $request->featured;
+            $inputData['is_recomended'] = $request->is_recomended;
+            $inputData['special_offer'] = $request->special_offer;
+            $inputData['special_deals'] = $request->special_deals;
+            $inputData['value_of_the_day'] = $request->value_of_the_day;
+            $inputData['weekly_offers'] = $request->weekly_offers;
+            $inputData['new_arrivals'] = $request->new_arrivals;
+            $inputData['short_description'] = $request->short_description;
+            $inputData['product_specification'] = $request->product_specification;
+            $inputData['long_description'] = $request->long_description;
 
             // Validate products fields (required)
             if (empty($inputData['product_title'])) {
                 return response()->json(['status_code' => '401', 'status' => 'error', 'messages' => 'Please provide a product title to continue']);
             }
 
-            if (empty($inputData['product_brand']) || ctype_digit($inputData['product_brand'])) {
+            if (empty($inputData['brand_id']) || !ctype_digit($inputData['brand_id'])) {
                 return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Product brand is required and must not contain numbers.']);
             }
 
@@ -242,14 +302,14 @@ class PostController extends Controller
                 return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product thumbnail image.']);
             }
 
-            if (empty($inputData['product_description'])) {
+            if (empty($inputData['long_description'])) {
                 return response()->json(['status_code' => '401', 'status' => 'error', 'message' => 'Please provide a product description.']);
             }
 
             // Upload product thumbnail.
             $image = $request->file('product_thumbnail');
-            $name_gen = hexdec(uniqid()).'.'.$image->getClientOriginalExtension();
-            Image::make($image)->resize(720, 960)->save('images/product_thumbnails/'.$name_gen);
+            $name_gen = 'patazone-product-image-'.hexdec(uniqid()).'.'.$image->getClientOriginalExtension();
+            Image::make($image)->resize(500, 500)->save('images/product_thumbnails/'.$name_gen);
             $imageUrlPath = 'images/product_thumbnails/'.$name_gen;
             $inputData['product_thumbnail'] = $imageUrlPath;
 
@@ -257,12 +317,10 @@ class PostController extends Controller
             $product_id = DB::table('ptz_products')->insertGetId($inputData);
 
             // Upload product multiple images
-            $images = $request->file('multi_image');
-            $imageUploadPath = 'images/products_multiImages/';
-            $this->uploadmultipleImages($images, $imageUploadPath, $product_id);
+            $this->uploadmultipleImages($request->file('multi_image'), $product_id);
 
             // Get the inserted product
-            $product = DB::table('ptz_products')->where(['id' => $product_id])->get();
+            $product = DB::table('ptz_products')->where(['id' => $product_id])->first();
 
             // Check if the product is found.
             if (!$product) {
@@ -289,6 +347,13 @@ class PostController extends Controller
                     $productMaterialArray = $this->filterMaterial($product->product_material);
                 }
 
+                // Get product Tags
+                if ($product->product_tags === '') {
+                    $productTagsArray = [];
+                } else {
+                    $productTagsArray = $this->filterTags($product->product_tags);
+                }
+
                 // Get product images
                 $productImagesArray = $this->getProductImages($product->id);
 
@@ -304,7 +369,7 @@ class PostController extends Controller
                 $productArray['category_id'] = $product->category_id;
                 $productArray['subcategory_id'] = $product->subcategory_id;
                 $productArray['sub_subcategory_id'] = $product->sub_subcategory_id;
-                $productArray['product_tags'] = $product->product_tags;
+                $productArray['product_tags'] = $productTagsArray;
                 $productArray['product_sku'] = $product->product_sku;
                 $productArray['product_qty'] = $product->product_qty;
                 $productArray['cost_price'] = $product->cost_price;
@@ -334,7 +399,7 @@ class PostController extends Controller
                 $productArray['updated_date'] = $product->updated_date;
 
                 // Return success response for product creation.
-                return response()->json(['status_code' => '200', 'status' => 'success', 'massage' => ['Product created successfully.'], 'data' => $productArray]);
+                return response()->json(['status_code' => '201', 'status' => 'success', 'massage' => ['Product created successfully.'], 'data' => $productArray]);
             }
 
             // Catch internal errors
@@ -344,25 +409,41 @@ class PostController extends Controller
     }
 
     /**
-    * @param DATE-CREATED: 12/2/2022
+    * @param DATE-CREATED: 14/2/2022
     * @param AUTHOR: Dennis Otieno
     * @param DESCRIPTION: This function runs multiple image upload
     */
-    public function uploadmultipleImages($images, $imageUploadPath, $product_id)
+    public function uploadmultipleImages($images, $product_id)
     {
         //
         try {
             //Loop through the image array while saving in the database.
             foreach ($images as $img) {
-                $make_name = hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
-                Image::make($img)->resize(720, 960)->save($imageUploadPath.$make_name);
+                $make_name = 'patazone-product-image-'.hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
+                Image::make($img)->resize(500, 500)->save('images/product_multiImages/'.$make_name);
                 DB::table('ptz_multipleimgs')->insert([
-                'product_id' => $product_id,
-                'img_url' => $imageUploadPath
-            ]);
+                    'product_id' => $product_id,
+                    'img_url' => 'images/product_multiImages/'.$make_name
+                ]);
             }
+            return true;
         } catch (\Exception $ex) {
-            return response()->json(['ststue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+        }
+    }
+
+    /**
+    * @param DATE-CREATED: 14/2/2022
+    * @param AUTHOR: Dennis otieno
+    * @param DESCRIPTION: This function is for deleting a product; soft delete should be an intager 1 by default is null.
+    */
+    public function deleteProduct(Request $request, int $id, int $softDelete = null)
+    {
+        //
+        try {
+            //code...
+        } catch (\Exception $ex) {
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
     }
 
@@ -400,6 +481,17 @@ class PostController extends Controller
         //Get material array
         $materialArray = explode(',', $materialString);
         return $materialArray;
+    }
+
+    /**
+    * @param DATE-CREATED: 14/2/2022
+    * @param AUTHOR: Dennis Otieno
+    * @param DESCRIPTION: This function returns material array.
+    */
+    public function filterTags($tagsString)
+    {
+        $tagsArray = explode(',', $tagsString);
+        return $tagsArray;
     }
 
     /**

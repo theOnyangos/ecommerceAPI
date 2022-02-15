@@ -23,9 +23,7 @@ $app = new Laravel\Lumen\Application(
     dirname(__DIR__)
 );
 
-$app->withFacades(true, [
-    'Image' => Intervention\Image\Facades\Image::class
-]);
+$app->withFacades();
 
 $app->withEloquent();
 

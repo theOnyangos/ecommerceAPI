@@ -23,10 +23,10 @@ $router->get('/', function () use ($router) {
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/login', 'AuthController@login');
     $router->post('/register', 'AuthController@register');
-    $router->get('/products', 'PostController@get_products');
-    $router->get('/products/{id}', 'PostController@getSingleProduct');
-    $router->post('/products', 'PostController@createNewProduct');
-    // $router->get('/images', 'PostController@getSingleProduct');
+    $router->get('/products', 'PostController@get_products'); // Get all products
+    $router->get('/products/{id}', 'PostController@getSingleProduct'); // Get a single product
+    $router->post('/products', 'PostController@createNewProduct'); // Create product on main admin system
+    $router->post('/products/{id}', 'PostController@createNewProduct'); //Create product on vendor portal
 
     // Authenticate routs
     $router->group(['middleware' => 'auth'], function () use ($router) {
