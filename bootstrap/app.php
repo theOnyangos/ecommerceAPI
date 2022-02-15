@@ -98,6 +98,9 @@ $app->register(App\Providers\AuthServiceProvider::class);
 $app->register(Tymon\JWTAuth\Providers\LumenServiceProvider::class);
 $app->register(Flipbox\LumenGenerator\LumenGeneratorServiceProvider::class);
 $app->register(Intervention\Image\ImageServiceProvider::class);
+$app->register(Maatwebsite\Excel\ExcelServiceProvider::class);
+
+class_alias(Maatwebsite\Excel\Facades\Excel::class, 'Excel');
 
 /*
 |--------------------------------------------------------------------------

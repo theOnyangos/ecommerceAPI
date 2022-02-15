@@ -6,9 +6,21 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image;
+use App\Exports\ProductExport;
+use Excel;
 
 class PostController extends Controller
 {
+    public function exportProductToExcel()
+    {
+        return Excel::download(new ProductExport, 'productList.xlsx');
+    }
+
+    public function exportToCSV()
+    {
+        return Excel::download(new ProductExport, 'productList.csv');
+    }
+
     /**
     * @param DATE-CREATED: 12/2/2022
     * @param AUTHOR: Dennis Otieno

@@ -30,6 +30,8 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->delete('/products/{id}', 'PostController@deleteProduct'); // Delete a single product
     $router->delete('/products/{id}/{softid}', 'PostController@deleteProduct'); // Soft delete a single product
     $router->patch('/products/{id}', 'PostController@updateProductDetails'); // Update a product
+    $router->get('/productsCsv', 'PostController@exportToCSV'); // Export product CSV
+    $router->get('/productsExcel', 'PostController@exportProductToExcel'); // Export product xlsx
 
     // Authenticate routs
     $router->group(['middleware' => 'auth'], function () use ($router) {
