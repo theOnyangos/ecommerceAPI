@@ -434,12 +434,36 @@ class PostController extends Controller
             foreach ($images as $img) {
                 $make_name = 'patazone-product-image-'.hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
                 Image::make($img)->resize(500, 500)->save('images/product_multiImages/'.$make_name);
+                $imgUrl = 'images/product_multiImages/'.$make_name;
                 DB::table('ptz_multipleimgs')->insert([
                     'product_id' => $product_id,
-                    'img_url' => 'images/product_multiImages/'.$make_name
+                    'img_url' => $imgUrl
                 ]);
             }
             return true;
+        } catch (\Exception $ex) {
+            return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
+        }
+    }
+
+    public function updateMultipleImages(Request $request, $id)
+    {
+        try {
+            $images = $request->file('multi_image');
+            //Loop through the image array while saving in the database.
+            $imgArray = array();
+            foreach ($images as $img) {
+                $make_name = 'patazone-product-image-'.hexdec(uniqid()).'.'.$img->getClientOriginalExtension();
+                Image::make($img)->resize(500, 500)->save('images/product_multiImages/'.$make_name);
+                $imgUrl = 'images/product_multiImages/'.$make_name;
+                DB::table('ptz_multipleimgs')->insert([
+                    'product_id' => $id,
+                    'img_url' => $imgUrl
+                ]);
+
+                $imgArray[] = $imgUrl;
+            }
+            return response()->json(['status_code' => '201', 'status' => 'success', 'message' => 'Image(s) for product ID '.$id.' created successfully.', 'data' => $imgArray]);
         } catch (\Exception $ex) {
             return response()->json(['statue_code' => '500','status' => 'error', 'message' => $ex->getMessage()]);
         }
@@ -707,7 +731,9 @@ class PostController extends Controller
         try {
             // Find the images and unlink them
             $oldImages = DB::table('ptz_multipleimgs')->where(['product_id' => $productId])->get();
-            unlink($oldImages->img_url);
+            foreach ($oldImages as $img) {
+                unlink($img->img_url);
+            }
 
             // Delete the image links from the database
             DB::table('ptz_multipleimgs')->where(['product_id' => $productId])->delete();

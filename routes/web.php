@@ -36,6 +36,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('/productsExcel', 'PostController@exportProductToExcel'); // Export product xlsx
     $router->delete('/image/{id}', 'PostController@deleteInMultipleImages'); // delete Multiple Image
     $router->delete('/image/{id}/{imgid}', 'PostController@deleteInMultipleImages'); // delete Single Image
+    $router->post('/images/{id}', 'PostController@updateMultipleImages'); // Insert single or multiple product images
 
     // Authenticate routs
     $router->group(['middleware' => 'auth'], function () use ($router) {
