@@ -156,7 +156,7 @@ class PostController extends Controller
                     }
 
                     // Get product images
-                    $productImagesArray = $this->getProductImages($product->id);
+                    $productImagesArray = $this->getProductImagesWithId($product->id);
 
                     // New product object
                     $productArray = array();
@@ -180,7 +180,7 @@ class PostController extends Controller
                     $productArray['product_size'] = $productSizeArray;
                     $productArray['product_color'] = $productColorArray;
                     $productArray['product_material'] = $productMaterialArray;
-                    $productArray['product_thumbnail'] = 'https://sellercenter.patazone.co.ke/'.$product->product_thumbnail;
+                    $productArray['product_thumbnail'] = $product->product_thumbnail;
                     $productArray['images'] = $productImagesArray;
                     $productArray['unit_size'] = $product->unit_size;
                     $productArray['hot_deals'] = $product->hot_deals;
@@ -368,7 +368,7 @@ class PostController extends Controller
                 }
 
                 // Get product images
-                $productImagesArray = $this->getProductImages($product->id);
+                $productImagesArray = $this->getProductImagesWithId($product->id);
 
                 // New product object
                 $productArray = array();
@@ -392,7 +392,7 @@ class PostController extends Controller
                 $productArray['product_size'] = $productSizeArray;
                 $productArray['product_color'] = $productColorArray;
                 $productArray['product_material'] = $productMaterialArray;
-                $productArray['product_thumbnail'] = 'https://sellercenter.patazone.co.ke/'.$product->product_thumbnail;
+                $productArray['product_thumbnail'] = $product->product_thumbnail;
                 $productArray['images'] = $productImagesArray;
                 $productArray['unit_size'] = $product->unit_size;
                 $productArray['hot_deals'] = $product->hot_deals;
@@ -646,7 +646,7 @@ class PostController extends Controller
                 $productArray['product_size'] = $productSizeArray;
                 $productArray['product_color'] = $productColorArray;
                 $productArray['product_material'] = $productMaterialArray;
-                $productArray['product_thumbnail'] = 'https://sellercenter.patazone.co.ke/'.$product->product_thumbnail;
+                $productArray['product_thumbnail'] = $product->product_thumbnail;
                 $productArray['images'] = $productImagesArray;
                 $productArray['unit_size'] = $product->unit_size;
                 $productArray['hot_deals'] = $product->hot_deals;
@@ -789,7 +789,26 @@ class PostController extends Controller
         if ($images) {
             $imagesArray = array();
             foreach ($images as $image):
-                $imagesArray[] = 'https://sellercenter.patazone.co.ke/'.$image->img_url;
+                $imagesArray[] = $image->img_url;
+            endforeach;
+            return $imagesArray;
+        } else {
+            $imagesArray = [];
+            return $imagesArray;
+        }
+    }
+
+    public function getProductImagesWithId($productId)
+    {
+        $images = DB::table('ptz_multipleimgs')->where(['product_id' => $productId])->get();
+        if ($images) {
+            $imagesArray = array();
+            foreach ($images as $image):
+                $imageObject = array(
+                    'id' => $image->id,
+                    'image' => $image->img_url
+                );
+            $imagesArray[] = $imageObject;
             endforeach;
             return $imagesArray;
         } else {
